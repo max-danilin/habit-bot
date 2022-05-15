@@ -8,11 +8,8 @@ base_url = 'https://api.telegram.org/bot' + token
 bot = Bot(token)
 dp = Dispatcher(bot)
 
-# TODO write tests for api
-# TODO write doc for pixela
-# TODO create git repositary
 # TODO implement bot behaviour
-
+USERS = dict()
 
 @dp.errors_handler(exception=BotBlocked)
 async def error_bot_blocked(update: types.Update, exception: BotBlocked):
