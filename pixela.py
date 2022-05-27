@@ -68,7 +68,7 @@ def delete_user(token: str, username: str) -> bool:
 
 def create_graph(token: str,
                  username: str,
-                 graph_name: str,
+                 name: str,
                  unit: str,
                  type: Literal['int', 'float'],
                  color: Color
@@ -83,19 +83,19 @@ def create_graph(token: str,
     :param color: str with predefined color
     :return: graph id
     """
-    if color not in [item.value for item in Color]:
+    if color not in Color:
         raise PixelaDataException('Choose correct color.')
     if type not in ('int', 'float'):
         raise PixelaDataException('Choose correct data type.')
     url = pixela_base_url + 'users/' + username + '/graphs'
-    id = re.sub(r'[\W_]', '-', graph_name.lower())
+    id = re.sub(r'[\W_]', '-', name.lower())
     headers = {'X-USER-TOKEN': token}
     payload = {
         'id': id,
-        'name': graph_name,
+        'name': name,
         'unit': unit,
         'type': type,
-        'color': color
+        'color': color.value
     }
     response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
     if response.get('isSuccess'):
@@ -104,7 +104,7 @@ def create_graph(token: str,
         raise PixelaDataException(response.get('message'))
 
 
-def get_graphs(token: str, username: str) -> List[Tuple[str, str, str]]:
+def get_graphs(token: str, username: str) -> List[dict]:
     """
     Gets all of user existing graphs
     :param token: user token
@@ -117,7 +117,8 @@ def get_graphs(token: str, username: str) -> List[Tuple[str, str, str]]:
     if response.get('graphs') is not None:
         graphs = []
         for item in response.get('graphs'):
-            graphs.append((item['id'], item['name'], item['unit']))
+            graphs.append({'id': item['id'], 'name': item['name'], 'unit': item['unit'],
+                           'type': item['type'], 'color': item['color']})
         return graphs
     else:
         raise PixelaDataException(response.get('message'))
@@ -140,8 +141,8 @@ def show_graph(username: str, graph_id: str) -> Optional[str]:
 
 def update_graph(token: str,
                  username: str,
-                 graph_id: str,
-                 graph_name: str,
+                 id: str,
+                 name: str,
                  unit: str,
                  type: Literal['int', 'float'],
                  color: Color) -> str:
@@ -156,21 +157,21 @@ def update_graph(token: str,
     :param color: color of given colors
     :return: graph id
     """
-    if color not in [item.value for item in Color]:
+    if color not in Color:
         raise PixelaDataException('Choose correct color.')
     if type not in ('int', 'float'):
         raise PixelaDataException('Choose correct data type.')
-    url = pixela_base_url + 'users/' + username + '/graphs/' + graph_id
+    url = pixela_base_url + 'users/' + username + '/graphs/' + id
     headers = {'X-USER-TOKEN': token}
     payload = {
-        'name': graph_name,
+        'name': name,
         'unit': unit,
         'type': type,
-        'color': color
+        'color': color.value
     }
     response = requests.put(url, headers=headers, data=json.dumps(payload)).json()
     if response.get('isSuccess'):
-        return graph_id
+        return id
     else:
         raise PixelaDataException(response.get('message'))
 
@@ -294,4 +295,6 @@ def parse_date(date: datetime) -> str:
 # post_pixel(TOKEN, NAME, id_, '20220509', 4)
 # update_pixel(TOKEN, NAME, id_, '20220510', 10)
 # delete_pixel(TOKEN, NAME, id_, '20220509')
-# delete_user(TOKEN_PIXELA, NAME_PREFIX+'vasya')
+# delete_user(TOKEN_PIXELA, NAME_PREFIX+'madmax')
+# create_graph(TOKEN_PIXELA, NAME_PREFIX+'madmax', 'test1', 'hour', 'int', "shibafu")
+# print(Color.green, type(Color.green), Color.green.value, Color.green.name)
