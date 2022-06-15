@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import Tuple, Union, List, Optional, Literal
+from typing import Tuple, Union, List, Optional, Literal, TypedDict
 from datetime import datetime
 import re
 import enum
@@ -9,6 +9,11 @@ import enum
 pixela_base_url = 'https://pixe.la/v1/'
 TOKEN_PIXELA = 'my-md-token'
 NAME_PREFIX = 'md-habit-'
+
+
+class Pixels(TypedDict):
+    date: str
+    quantity: str
 
 
 class PixelaDataException(Exception):
@@ -195,6 +200,27 @@ def delete_graph(token: str,
         raise PixelaDataException(response.get('message'))
 
 
+def get_pixels(token: str,
+               username: str,
+               graph_id: str
+               ) -> List[Pixels]:
+    """
+    Get list of pixels for certain graph.
+    :param token: user token
+    :param username:
+    :param graph_id:
+    :return: list of pixels
+    """
+    url = pixela_base_url + 'users/' + username + '/graphs/' + graph_id + '/pixels?withBody=true'
+    headers = {'X-USER-TOKEN': token}
+    response = requests.get(url, headers=headers).json()
+    pixels = response.get('pixels')
+    if pixels:
+        return pixels
+    else:
+        raise PixelaDataException(response.get('message'))
+
+
 def post_pixel(token: str,
                username: str,
                graph_id: str,
@@ -221,7 +247,6 @@ def post_pixel(token: str,
         'quantity': str(quantity)
     }
     response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
-    print(response)
     if response.get('isSuccess'):
         return parse_date(date)
     else:

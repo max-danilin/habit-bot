@@ -1,3 +1,7 @@
+from datetime import datetime
+from typing import Optional
+
+
 class User:
     def __init__(self, id: int, first_name: str, pixela_token: str = None, pixela_name: str = None, state: str = None):
         self.id = id
@@ -7,6 +11,9 @@ class User:
         self.state = state
         self.graph = {'id': None, 'name': None, 'unit': None, 'type': None, 'color': None}
         self.graphs = []
+        self.pixel = {'date': None, 'quantity': None}
+        self.pixels = None
+        self.pixel_date = None
         self.editting = False
 
     def __str__(self):
@@ -21,6 +28,9 @@ class User:
         self.editting = False
         self.graph = {'id': None, 'name': None, 'unit': None, 'type': None, 'color': None}
         self.graphs = []
+        self.pixel = {'date': None, 'quantity': None}
+        self.pixels = None
+        self.pixel_date = None
 
     def set_graph(self, graph_id: str):
         self.graph = [graph for graph in self.graphs if graph_id == graph['id']][0]
