@@ -1,2 +1,5 @@
 requests==2.27.1
 aiogram==2.20
+
+pytest~=7.1.2
+asyncpg~=0.25.0
