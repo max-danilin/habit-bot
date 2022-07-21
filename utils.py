@@ -69,6 +69,7 @@ class User:
         self.pixel = {'date': None, 'quantity': None}
         self.pixels = None
         self.editting = False
+        self.session = None
 
     def __str__(self):
         return (f'User {self.first_name} with id {self.id} in state {self.state}. ' +
@@ -98,6 +99,7 @@ class User:
         self.graph = {'id': None, 'name': None, 'unit': None, 'type': None, 'color': None}
         self.pixel = {'date': None, 'quantity': None}
         self.pixels = None
+        self.session = None
 
 
 async def get_user(id: int, container: dict) -> User:

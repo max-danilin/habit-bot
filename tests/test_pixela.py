@@ -1,16 +1,17 @@
+from datetime import datetime
 import pytest
 from pixela import *
-from datetime import datetime
+from utils import *
 
 
 user_name1 = 'vasya'
 user_name2 = 'MaSha-99'
 user_data1 = (TOKEN_PIXELA, NAME_PREFIX + 'vasya')
 user_data2 = (TOKEN_PIXELA, NAME_PREFIX + 'masha-99')
-graph_data1 = ('Test graph', 'kilo', 'int', Color.green.value, 'test-graph')
-graph_data2 = ('tEst @_mygraph', 'kilo', 'float', Color.red.value, 'test---mygraph')
-pixel_data1 = (5, datetime.today(), parse_date(datetime.today()))
-pixel_data2 = (2.3, datetime(year=2020, month=3, day=4), '20200304')
+graph_data1 = ('Test graph', 'kilo', 'int', Color.shibafu.name, 'test-graph')
+graph_data2 = ('tEst @_mygraph', 'kilo', 'float', Color.momiji.name, 'test---mygraph')
+pixel_data1 = (date_to_str(datetime.today()), 5, date_to_str(datetime.today()))
+pixel_data2 = (date_to_str(datetime(year=2020, month=3, day=4)), 2.3, '20200304')
 
 
 @pytest.fixture()
@@ -45,7 +46,7 @@ def cleanup_graph():
 def create_delete_pixel():
     id = post_pixel(*user_data1, graph_data1[-1], *pixel_data1[:-1])
     yield id
-    delete_pixel(*user_data1, graph_data1[-1])
+    delete_pixel(*user_data1, graph_data1[-1], pixel_data1[-1])
 
 
 @pytest.fixture()
@@ -98,8 +99,8 @@ class TestCreateGraph:
         cleanup_graph(output)
 
     @pytest.mark.parametrize('graph_name, unit, type, color', [
-        ('Test graph', 'kilo', 'text', Color.green.value),
-        ('Test graph', 'kilo', int, Color.green.value),
+        ('Test graph', 'kilo', 'text', Color.shibafu.name),
+        ('Test graph', 'kilo', int, Color.shibafu.name),
         ('Test graph', 'kilo', 'int', 'green'),
     ])
     def test_wrong_data(self, create_delete_user, graph_name, unit, type, color):
@@ -125,10 +126,10 @@ class TestDeleteGraph:
 
 class TestUpdateGraph:
     @pytest.mark.parametrize('graph_name, unit, type, color', [
-        ('Test graph', 'kilo', 'float', Color.green.value),
-        ('Test graph', 'kilos', 'float', Color.green.value),
-        ('Test1 graph', 'kilo', 'int', Color.green.value),
-        ('Test1 graph', 'kilo', 'int', Color.red.value),
+        ('Test graph', 'kilo', 'float', Color.shibafu.name),
+        ('Test graph', 'kilos', 'float', Color.shibafu.name),
+        ('Test1 graph', 'kilo', 'int', Color.shibafu.name),
+        ('Test1 graph', 'kilo', 'int', Color.momiji.name),
     ])
     def test_success(self, create_delete_user, create_delete_graph, graph_name, unit, type, color):
         token, username = create_delete_user
@@ -136,8 +137,8 @@ class TestUpdateGraph:
         assert update_graph(token, username, id, graph_name, unit, type, color) == id
 
     @pytest.mark.parametrize('graph_name, unit, type, color', [
-        ('Test graph', 'kilo', 'text', Color.green.value),
-        ('Test graph', 'kilo', int, Color.green.value),
+        ('Test graph', 'kilo', 'text', Color.shibafu.name),
+        ('Test graph', 'kilo', int, Color.shibafu.name),
         ('Test graph', 'kilo', 'int', 'green'),
     ])
     def test_wrong_data(self, create_delete_user, graph_name, unit, type, color):
@@ -153,8 +154,23 @@ class TestUpdateGraph:
 
 
 class TestGetAndShowGraphs:
+    def test_get_single_graph_success(self, create_delete_user, create_delete_graph):
+        assert get_graph(*create_delete_user, create_delete_graph) == {
+            'id': 'test-graph', 'name': 'Test graph', 'unit': 'kilo',
+            'type': 'int', 'color': Color.shibafu.name
+        }
+
+    def test_get_single_graph_no_graph(self, create_delete_user):
+        with pytest.raises(PixelaDataException):
+            get_graph(*create_delete_user, graph_data1[-1])
+
+    def test_get_single_graph_no_user(self):
+        with pytest.raises(PixelaDataException):
+            get_graph(*user_data1, graph_data1[-1])
+
     def test_get_success(self, create_delete_user, create_delete_graph):
-        assert get_graphs(*create_delete_user) == [('test-graph', 'Test graph', 'kilo')]
+        assert get_graphs(*create_delete_user) == [{'id': 'test-graph', 'name': 'Test graph', 'unit': 'kilo',
+                           'type': 'int', 'color': 'shibafu'}]
 
     def test_get_success_zero(self, create_delete_user):
         assert len(get_graphs(*create_delete_user)) == 0
@@ -180,24 +196,24 @@ class TestGetAndShowGraphs:
 
 
 class TestPostPixel:
-    @pytest.mark.parametrize('graph_data, quantity, date, output', [
+    @pytest.mark.parametrize('graph_data, date, quantity, output', [
         (graph_data1, *pixel_data1),
         (graph_data2, *pixel_data2)
     ])
     def test_success(self, create_delete_user, cleanup_graph, cleanup_pixel, graph_data, quantity, date, output):
         id = create_graph(*user_data1, *graph_data[:-1])
-        assert post_pixel(*create_delete_user, id, quantity, date) == output
+        assert post_pixel(*create_delete_user, id, date, quantity) == output
         cleanup_pixel(date, graph_data=graph_data)
         cleanup_graph(id)
 
     @pytest.mark.parametrize('quantity, date', [
-        ('5', datetime.today()),
+        ('5', date_to_str(datetime.today())),
         (5, 20200503),
-        (5, '20200503'),
+        (5, datetime.today()),
     ])
     def test_wrong_data(self, create_delete_user, create_delete_graph, quantity, date):
         with pytest.raises(PixelaDataException):
-            post_pixel(*create_delete_user, create_delete_graph, quantity, date)
+            post_pixel(*create_delete_user, create_delete_graph, date, quantity)
 
     def test_graph_doesnt_exist(self, create_delete_user):
         with pytest.raises(PixelaDataException):
@@ -211,35 +227,35 @@ class TestPostPixel:
 class TestDeletePixel:
     def test_duplicate(self, create_delete_user, create_delete_graph):
         post_pixel(*create_delete_user, create_delete_graph, *pixel_data1[:-1])
-        assert delete_pixel(*create_delete_user, create_delete_graph, pixel_data1[1]) is True
+        assert delete_pixel(*create_delete_user, create_delete_graph, pixel_data1[0]) is True
         with pytest.raises(PixelaDataException):
-            delete_pixel(*create_delete_user, create_delete_graph, pixel_data1[1])
+            delete_pixel(*create_delete_user, create_delete_graph, pixel_data1[0])
 
 
 class TestUpdatePixel:
     @pytest.mark.parametrize('graph_data, quantity, date, output', [
-        (graph_data1, 15, datetime.today(), parse_date(datetime.today())),
-        (graph_data1, 15, datetime(year=2022, month=10, day=1), '20221001'),
-        (graph_data2, 3.3, datetime(year=2020, month=3, day=4), '20200304'),
-        (graph_data2, 3.3, datetime.today(), parse_date(datetime.today()))
+        (graph_data1, 15, date_to_str(datetime.today()), date_to_str(datetime.today())),
+        (graph_data1, 15, date_to_str(datetime(year=2022, month=10, day=1)), '20221001'),
+        (graph_data2, 3.3, date_to_str(datetime(year=2020, month=3, day=4)), '20200304'),
+        (graph_data2, 3.3, date_to_str(datetime.today()), date_to_str(datetime.today()))
     ])
     def test_success(self, create_delete_user, cleanup_graph, cleanup_pixel, graph_data, quantity, date, output):
         id = create_graph(*user_data1, *graph_data[:-1])
         post_pixel(*create_delete_user, id, *pixel_data1[:-1])
-        assert update_pixel(*create_delete_user, id, quantity, date) == output
+        assert update_pixel(*create_delete_user, id, date, quantity) == output
         cleanup_pixel(date, graph_data=graph_data)
         cleanup_graph(id)
 
     @pytest.mark.parametrize('graph_data, quantity, date', [
-        (graph_data1, '15', pixel_data1[1]),
-        (graph_data1, 15.1, pixel_data1[1]),
-        (graph_data2, '3.3', pixel_data1[1])
+        (graph_data1, '15', pixel_data1[0]),
+        (graph_data1, 15.1, pixel_data1[0]),
+        (graph_data2, '3.3', pixel_data1[0])
     ])
     def test_wrong_data(self, create_delete_user, cleanup_graph, cleanup_pixel, graph_data, quantity, date):
         id = create_graph(*user_data1, *graph_data[:-1])
         post_pixel(*create_delete_user, id, *pixel_data1[:-1])
         with pytest.raises(PixelaDataException):
-            update_pixel(*create_delete_user, id, quantity, date)
+            update_pixel(*create_delete_user, id, date, quantity)
         cleanup_pixel(date, graph_data=graph_data)
         cleanup_graph(id)
 
@@ -251,5 +267,22 @@ class TestUpdatePixel:
         with pytest.raises(PixelaDataException):
             update_pixel(*user_data1, graph_data1[-1], *pixel_data1[:-1])
 
+
+class TestGetPixel:
+    def test_get_pixels_success(self, create_delete_user, create_delete_graph, create_delete_pixel):
+        assert get_pixels(*create_delete_user, create_delete_graph) == [
+            {'date': pixel_data1[0], 'quantity': str(pixel_data1[1])}
+        ]
+
+    def test_get_pixels_no_pixels(self, create_delete_user, create_delete_graph):
+        assert get_pixels(*create_delete_user, create_delete_graph) == []
+
+    def test_get_pixels_no_graph(self, create_delete_user):
+        with pytest.raises(PixelaDataException):
+            get_pixels(*create_delete_user, graph_data1[-1])
+
+    def test_get_pixels_no_user(self):
+        with pytest.raises(PixelaDataException):
+            get_pixels(*user_data1, graph_data1[-1])
 
 

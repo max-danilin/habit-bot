@@ -8,7 +8,7 @@ from datetime import datetime
 import re
 from typing import Tuple, Union, List, Optional, Literal, TypedDict
 import requests
-
+import aiohttp
 
 PIXELA_BASE_URL = 'https://pixe.la/v1/'
 TOKEN_PIXELA = 'my-md-token'
@@ -50,9 +50,10 @@ def generate_name(name: str) -> str:
     return NAME_PREFIX + name.lower()
 
 
-def create_user(token: str, name: str) -> Tuple[str, str]:
+async def create_user(session: aiohttp.ClientSession, token: str, name: str) -> Tuple[str, str]:
     """
     Creates user of pixela
+    :param session:
     :param token: user token
     :param name: username
     :return: token and name if successful or None
@@ -65,41 +66,47 @@ def create_user(token: str, name: str) -> Tuple[str, str]:
         'agreeTermsOfService': 'yes',
         'notMinor': 'yes'
     }
-    response = requests.post(url, data=json.dumps(payload)).json()
-    if response.get('isSuccess'):
-        return token, username
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.post(url, data=json.dumps(payload)) as resp:
+        response = await resp.json()
+        # response = requests.post(url, data=json.dumps(payload)).json()
+        if response.get('isSuccess'):
+            return token, username
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def delete_user(token: str, username: str) -> bool:
+async def delete_user(session: aiohttp.ClientSession, token: str, username: str) -> bool:
     """
     Deletes user of pixela
+    :param session:
     :param token: user token
     :param username: username
     :return: token and name if successful or None
     """
     url = PIXELA_BASE_URL + 'users/' + username
     headers = {'X-USER-TOKEN': token}
-    response = requests.delete(url, headers=headers).json()
-    if response.get('isSuccess'):
-        return True
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.delete(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.delete(url, headers=headers).json()
+        if response.get('isSuccess'):
+            return True
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def create_graph(token: str,
-                 username: str,
-                 name: str,
-                 unit: str,
-                 type: Literal['int', 'float'],
-                 color: str
-                 ) -> str:
+async def create_graph(session: aiohttp.ClientSession,
+                       token: str,
+                       username: str,
+                       name: str,
+                       unit: str,
+                       type: Literal['int', 'float'],
+                       color: str) -> str:
     """
     Creates graph with given data
+    :param session:
     :param token: user token
     :param username:
-    :param graph_name:
+    :param name:
     :param unit: unit of measurement
     :param type: int or float
     :param color: str with predefined color
@@ -119,16 +126,19 @@ def create_graph(token: str,
         'type': type,
         'color': color
     }
-    response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
-    if response.get('isSuccess'):
-        return id
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.post(url, headers=headers, data=json.dumps(payload)) as resp:
+        response = await resp.json()
+    # response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
+        if response.get('isSuccess'):
+            return id
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def get_graph(token: str, username: str, graph_id: str) -> dict:
+async def get_graph(session: aiohttp.ClientSession, token: str, username: str, graph_id: str) -> dict:
     """
     Gets single graph definitions.
+    :param session:
     :param token:
     :param username:
     :param graph_id:
@@ -137,59 +147,68 @@ def get_graph(token: str, username: str, graph_id: str) -> dict:
     url = (PIXELA_BASE_URL + 'users/' + username + '/graphs/'
            + graph_id + '/graph-def')
     headers = {'X-USER-TOKEN': token}
-    response = requests.get(url, headers=headers).json()
-    if response.get('id') is not None:
-        graph = {'id': response['id'], 'name': response['name'], 'unit': response['unit'],
-                 'type': response['type'], 'color': Color[response['color']].name}
-        return graph
-    else:
-        raise PixelaDataException(response.status_code)
+    async with session.get(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.get(url, headers=headers).json()
+        if response.get('id'):
+            graph = {'id': response['id'], 'name': response['name'], 'unit': response['unit'],
+                     'type': response['type'], 'color': Color[response['color']].name}
+            return graph
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def get_graphs(token: str, username: str) -> List[dict]:
+async def get_graphs(session: aiohttp.ClientSession, token: str, username: str) -> List[dict]:
     """
     Gets all existing graphs for given user.
+    :param session:
     :param token: user token
     :param username:
     :return: list of graphs names and units
     """
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs'
     headers = {'X-USER-TOKEN': token}
-    response = requests.get(url, headers=headers).json()
-    if response.get('graphs') is not None:
-        graphs = []
-        for item in response.get('graphs'):
-            graphs.append({'id': item['id'], 'name': item['name'], 'unit': item['unit'],
-                           'type': item['type'], 'color': Color[item['color']].name})
-        return graphs
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.get(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.get(url, headers=headers).json()
+        if response.get('graphs') is not None:
+            graphs = []
+            for item in response.get('graphs'):
+                graphs.append({'id': item['id'], 'name': item['name'], 'unit': item['unit'],
+                               'type': item['type'], 'color': Color[item['color']].name})
+            return graphs
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def show_graph(username: str, graph_id: str) -> Optional[str]:
+async def show_graph(session: aiohttp.ClientSession, username: str, graph_id: str) -> Optional[str]:
     """
     Gets url for certain graph.
+    :param session:
     :param username:
     :param graph_id:
     :return: url
     """
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs/' + graph_id + '.html?mode=simple'
-    response = requests.get(url)
-    if response.ok:
-        return url
-    else:
-        raise PixelaDataException(response.status_code)
+    async with session.get(url) as response:
+    # response = requests.get(url)
+        if response.ok:
+            return url
+        else:
+            raise PixelaDataException(response.status)
 
 
-def update_graph(token: str,
-                 username: str,
-                 id: str,
-                 name: str,
-                 unit: str,
-                 type: Literal['int', 'float'],
-                 color: str) -> str:
+async def update_graph(session: aiohttp.ClientSession,
+                       token: str,
+                       username: str,
+                       id: str,
+                       name: str,
+                       unit: str,
+                       type: Literal['int', 'float'],
+                       color: str) -> str:
     """
     Updates certain graph.
+    :param session:
     :param token: user token
     :param username:
     :param id: graph_id
@@ -211,18 +230,22 @@ def update_graph(token: str,
         'type': type,
         'color': color
     }
-    response = requests.put(url, headers=headers, data=json.dumps(payload)).json()
-    if response.get('isSuccess'):
-        return id
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.put(url, headers=headers, data=json.dumps(payload)) as resp:
+        response = await resp.json()
+    # response = requests.put(url, headers=headers, data=json.dumps(payload)).json()
+        if response.get('isSuccess'):
+            return id
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def delete_graph(token: str,
-                 username: str,
-                 graph_id: str) -> bool:
+async def delete_graph(session: aiohttp.ClientSession,
+                       token: str,
+                       username: str,
+                       graph_id: str) -> bool:
     """
     Deletes certain graph.
+    :param session:
     :param token: user token
     :param username:
     :param graph_id:
@@ -230,19 +253,22 @@ def delete_graph(token: str,
     """
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs/' + graph_id
     headers = {'X-USER-TOKEN': token}
-    response = requests.delete(url, headers=headers).json()
-    if response.get('isSuccess'):
-        return True
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.delete(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.delete(url, headers=headers).json()
+        if response.get('isSuccess'):
+            return True
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def get_pixels(token: str,
-               username: str,
-               graph_id: str
-               ) -> List[Pixels]:
+async def get_pixels(session: aiohttp.ClientSession,
+                     token: str,
+                     username: str,
+                     graph_id: str) -> List[Pixels]:
     """
     Get list of pixels for certain graph.
+    :param session:
     :param token: user token
     :param username:
     :param graph_id:
@@ -250,22 +276,27 @@ def get_pixels(token: str,
     """
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs/' + graph_id + '/pixels?withBody=true'
     headers = {'X-USER-TOKEN': token}
-    response = requests.get(url, headers=headers).json()
-    pixels = response.get('pixels')
-    if pixels:
-        return [{'date': pixel['date'], 'quantity': pixel['quantity']} for pixel in pixels]
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.get(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.get(url, headers=headers).json()
+        pixels = response.get('pixels')
+        if pixels:
+            return [{'date': pixel['date'], 'quantity': pixel['quantity']} for pixel in pixels]
+        elif pixels == []:
+            return []
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def post_pixel(token: str,
-               username: str,
-               graph_id: str,
-               date_: str,
-               quantity: Union[int, float]
-               ) -> str:
+async def post_pixel(session: aiohttp.ClientSession,
+                     token: str,
+                     username: str,
+                     graph_id: str,
+                     date_: str,
+                     quantity: Union[int, float]) -> str:
     """
     Posts pixel for certain date inside given graph
+    :param session:
     :param token: user token
     :param username:
     :param graph_id:
@@ -279,27 +310,32 @@ def post_pixel(token: str,
         datetime.strptime(date_, "%Y%m%d")
     except ValueError as exc:
         raise PixelaDataException('Wrong data format of date.') from exc
+    except TypeError as exc:
+        raise PixelaDataException('Wrong data type of date.') from exc
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs/' + graph_id
     headers = {'X-USER-TOKEN': token}
     payload = {
         'date': date_,
         'quantity': str(quantity)
     }
-    response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
-    if response.get('isSuccess'):
-        return date_
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.post(url, headers=headers, data=json.dumps(payload)) as resp:
+        response = await resp.json()
+    # response = requests.post(url, headers=headers, data=json.dumps(payload)).json()
+        if response.get('isSuccess'):
+            return date_
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def update_pixel(token: str,
-                 username: str,
-                 graph_id: str,
-                 date_: str,
-                 quantity: Union[int, float] = 0
-                 ) -> str:
+async def update_pixel(session: aiohttp.ClientSession,
+                       token: str,
+                       username: str,
+                       graph_id: str,
+                       date_: str,
+                       quantity: Union[int, float] = 0) -> str:
     """
     Updates pixel
+    :param session:
     :param token: user token
     :param username:
     :param graph_id:
@@ -318,20 +354,23 @@ def update_pixel(token: str,
     payload = {
         'quantity': str(quantity)
     }
-    response = requests.put(url, headers=headers, data=json.dumps(payload)).json()
-    if response.get('isSuccess'):
-        return date_
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.put(url, headers=headers, data=json.dumps(payload)) as resp:
+        response = await resp.json()
+    # response = requests.put(url, headers=headers, data=json.dumps(payload)).json()
+        if response.get('isSuccess'):
+            return date_
+        else:
+            raise PixelaDataException(response.get('message'))
 
 
-def delete_pixel(token: str,
-                 username: str,
-                 graph_id: str,
-                 date_: str
-                 ) -> bool:
+async def delete_pixel(session: aiohttp.ClientSession,
+                       token: str,
+                       username: str,
+                       graph_id: str,
+                       date_: str) -> bool:
     """
     Delete pixel from a graph
+    :param session:
     :param token: user token
     :param username:
     :param graph_id:
@@ -340,14 +379,11 @@ def delete_pixel(token: str,
     """
     url = PIXELA_BASE_URL + 'users/' + username + '/graphs/' + graph_id + '/' + date_
     headers = {'X-USER-TOKEN': token}
-    response = requests.delete(url, headers=headers).json()
-    if response.get('isSuccess'):
-        return True
-    else:
-        raise PixelaDataException(response.get('message'))
+    async with session.delete(url, headers=headers) as resp:
+        response = await resp.json()
+    # response = requests.delete(url, headers=headers).json()
+        if response.get('isSuccess'):
+            return True
+        else:
+            raise PixelaDataException(response.get('message'))
 
-
-# delete_user(TOKEN_PIXELA, NAME_PREFIX+'madmax')
-# print(Color.green, type(Color.green), Color.green.value, Color.green.name)
-# for color in Color:
-#     print(color.name, type(color.name), color.value, type(color.value))

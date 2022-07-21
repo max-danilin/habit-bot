@@ -49,97 +49,95 @@ async def load_pixels(pixels: List[Pixels], user: User,
     return None
 
 
-def load_pixel_prev(users):
+async def load_pixel_prev(query: types.CallbackQuery, callback_data: dict, users: dict):
     """
     Displays dates as inline buttons for previous month.
     We're using higher order function to define local storage and
     be able to use inner function for query handler in main bot script.
+    :param callback_data:
+    :param query:
     :param users: local storage
     :return: inner function
     """
-    async def inner(query: types.CallbackQuery, callback_data: dict):
-        action = callback_data['action']
-        cur_month = str_to_date(callback_data['date'])
-        user = await get_user(query.from_user.id, users)
-        pixels_sorted = convert_pixel_str_to_date(user.pixels)
-        pixels_sorted = sorted([pix for pix in pixels_sorted if pix['date'] < cur_month],
-                               key=lambda pix: pix['date'], reverse=True)
-        ini_date = pixels_sorted[0]['date']
-        last_date = date(year=ini_date.year, month=ini_date.month, day=1)
-        month = last_date.strftime('%B')
-        markup = types.InlineKeyboardMarkup(row_width=ROW_WIDTH)
-        markup.row()
-        buttons = []
-        dir_btn = []
-        if last_date.month != 12:
-            dir_btn.append(create_inline_btn_for_direction(
-                date(year=last_date.year, month=last_date.month + 1, day=1), 'next', action))
+    action = callback_data['action']
+    cur_month = str_to_date(callback_data['date'])
+    user = await get_user(query.from_user.id, users)
+    pixels_sorted = convert_pixel_str_to_date(user.pixels)
+    pixels_sorted = sorted([pix for pix in pixels_sorted if pix['date'] < cur_month],
+                           key=lambda pix: pix['date'], reverse=True)
+    ini_date = pixels_sorted[0]['date']
+    last_date = date(year=ini_date.year, month=ini_date.month, day=1)
+    month = last_date.strftime('%B')
+    markup = types.InlineKeyboardMarkup(row_width=ROW_WIDTH)
+    markup.row()
+    buttons = []
+    dir_btn = []
+    if last_date.month != 12:
+        dir_btn.append(create_inline_btn_for_direction(
+            date(year=last_date.year, month=last_date.month + 1, day=1), 'next', action))
+    else:
+        dir_btn.append(create_inline_btn_for_direction(
+            date(year=last_date.year + 1, month=1, day=1), 'next', action))
+    dir_btn.append(types.InlineKeyboardButton(text=month, callback_data=ignore_callback))
+    for pixel_fmt in pixels_sorted:
+        if last_date <= pixel_fmt['date'] <= ini_date:
+            btn = create_inline_btn_for_date(pixel_fmt['date'], pixel_fmt["quantity"],
+                                             user.graph["unit"], action)
+            buttons.append(btn)
         else:
-            dir_btn.append(create_inline_btn_for_direction(
-                date(year=last_date.year + 1, month=1, day=1), 'next', action))
-        dir_btn.append(types.InlineKeyboardButton(text=month, callback_data=ignore_callback))
-        for pixel_fmt in pixels_sorted:
-            if last_date <= pixel_fmt['date'] <= ini_date:
-                btn = create_inline_btn_for_date(pixel_fmt['date'], pixel_fmt["quantity"],
-                                                 user.graph["unit"], action)
-                buttons.append(btn)
-            else:
-                dir_btn.append(create_inline_btn_for_direction(last_date, 'prev', action))
-                break
-        buttons = buttons[::-1]
-        dir_btn = dir_btn[::-1]
-        for o_btn in dir_btn:
-            markup.insert(o_btn)
-        markup = order_buttons(buttons, markup)
-        await query.message.edit_reply_markup(reply_markup=markup)
-
-    return inner
+            dir_btn.append(create_inline_btn_for_direction(last_date, 'prev', action))
+            break
+    buttons = buttons[::-1]
+    dir_btn = dir_btn[::-1]
+    for o_btn in dir_btn:
+        markup.insert(o_btn)
+    markup = order_buttons(buttons, markup)
+    await query.message.edit_reply_markup(reply_markup=markup)
 
 
-def load_pixel_next(users):
+async def load_pixel_next(query: types.CallbackQuery, callback_data: dict, users: dict):
     """
     Displays dates as inline buttons for next month.
     We're using higher order function to define local storage and
     be able to use inner function for query handler in main bot script.
+    :param callback_data:
+    :param query:
     :param users: local storage
     :return: inner function
     """
-    async def inner(query: types.CallbackQuery, callback_data: dict):
-        action = callback_data['action']
-        cur_month = str_to_date(callback_data['date'])
-        user = await get_user(query.from_user.id, users)
-        pixels_sorted = convert_pixel_str_to_date(user.pixels)
-        pixels_sorted = sorted([pix for pix in pixels_sorted if pix['date'] >= cur_month],
-                               key=lambda pix: pix['date'])
-        ini_date = pixels_sorted[0]['date']
-        if ini_date.month != 12:
-            last_date = date(year=ini_date.year, month=ini_date.month + 1, day=1)
+    action = callback_data['action']
+    cur_month = str_to_date(callback_data['date'])
+    user = await get_user(query.from_user.id, users)
+    pixels_sorted = convert_pixel_str_to_date(user.pixels)
+    pixels_sorted = sorted([pix for pix in pixels_sorted if pix['date'] >= cur_month],
+                           key=lambda pix: pix['date'])
+    ini_date = pixels_sorted[0]['date']
+    if ini_date.month != 12:
+        last_date = date(year=ini_date.year, month=ini_date.month + 1, day=1)
+    else:
+        last_date = date(year=ini_date.year + 1, month=1, day=1)
+    month = ini_date.strftime('%B')
+    markup = types.InlineKeyboardMarkup(row_width=ROW_WIDTH)
+    markup.row()
+    buttons = []
+    markup.insert(create_inline_btn_for_direction(
+        date(year=ini_date.year, month=ini_date.month, day=1), 'prev', action))
+    markup.insert(types.InlineKeyboardButton(text=month, callback_data=ignore_callback))
+    for pixel_fmt in pixels_sorted:
+        if ini_date <= pixel_fmt['date'] < last_date:
+            btn = create_inline_btn_for_date(pixel_fmt['date'], pixel_fmt["quantity"],
+                                             user.graph["unit"], action)
+            buttons.append(btn)
         else:
-            last_date = date(year=ini_date.year + 1, month=1, day=1)
-        month = ini_date.strftime('%B')
-        markup = types.InlineKeyboardMarkup(row_width=ROW_WIDTH)
-        markup.row()
-        buttons = []
-        markup.insert(create_inline_btn_for_direction(
-            date(year=ini_date.year, month=ini_date.month, day=1), 'prev', action))
-        markup.insert(types.InlineKeyboardButton(text=month, callback_data=ignore_callback))
-        for pixel_fmt in pixels_sorted:
-            if ini_date <= pixel_fmt['date'] < last_date:
-                btn = create_inline_btn_for_date(pixel_fmt['date'], pixel_fmt["quantity"],
-                                                 user.graph["unit"], action)
-                buttons.append(btn)
+            if ini_date.month != 12:
+                markup.insert(create_inline_btn_for_direction(
+                    date(year=ini_date.year, month=ini_date.month + 1, day=1), 'next', action))
             else:
-                if ini_date.month != 12:
-                    markup.insert(create_inline_btn_for_direction(
-                        date(year=ini_date.year, month=ini_date.month + 1, day=1), 'next', action))
-                else:
-                    markup.insert(create_inline_btn_for_direction(
-                        date(year=ini_date.year + 1, month=1, day=1), 'next', action))
-                break
-        markup = order_buttons(buttons, markup)
-        await query.message.edit_reply_markup(reply_markup=markup)
-
-    return inner
+                markup.insert(create_inline_btn_for_direction(
+                    date(year=ini_date.year + 1, month=1, day=1), 'next', action))
+            break
+    markup = order_buttons(buttons, markup)
+    await query.message.edit_reply_markup(reply_markup=markup)
 
 
 def convert_pixel_str_to_date(pixels: List[Pixels]) -> List:
