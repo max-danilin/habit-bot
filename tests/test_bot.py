@@ -25,13 +25,13 @@ API_RETURNS = [
     True,
     {'id': 'gtest_graph_id', 'name': 'gtest', 'unit': 'min', 'type': 'int', 'color': 'shibafu'},
 ]
-INPUTS = ['test', "да", 'test-max', '/create', 'gtest', 'min', 'целые', 'зеленый', 'да',
+INPUTS = ['test', '/start', "да", 'test-max', '/create', 'gtest', 'min', 'целые', 'зеленый', 'да',
           '/select', None, None, None, None, None, '10', None, None, None, '20', None,
           None, None, '5', None, None, None, None, None, None, None, None, 'qtest',
           None, None, None, None, None, None, '/delete', 'да', ]
 EXPECTED_ANSWERS = [
-    'Здравствуйте, Max! Это бот для составления диаграмм привычек. '
-    'Желаете создать новый профиль?',
+    'Здравствуйте, Max! Это бот для составления диаграмм привычек.',
+    'Здравствуйте, Max! Профиль Pixela не найден. Желаете создать?',
     'Выберите имя для своего профиля, допустимо использовать латинские буквы и/или цифры.',
     'Профиль успешно создан! Ваше имя профиля md-habit-test-max, токен my-md-token.',
     'Создаем таблицу!',
@@ -45,11 +45,11 @@ EXPECTED_ANSWERS = [
     'Ссылка на таблицу:\nsome_url',
     'Выберите действие с точкой:',
     'Выберите дату для добавления точки:',
-    f'Вы выбрали {date_to_str(TODAY)}.',
+    f'Вы выбрали {TODAY.strftime("%d/%m/%Y")}.',
     'Точка успешно добавлена!',
     None,
     'Выберите дату для добавления точки:',
-    'Вы выбрали 20200101.',
+    'Вы выбрали 01/01/2020.',
     'Точка успешно добавлена!',
     None,
     'Выберите точку для изменения:',
@@ -74,6 +74,7 @@ EXPECTED_ANSWERS = [
     'Профиль успешно удален!',
 ]
 REPLY_TYPES = [
+    'answer',
     'answer',
     'answer',
     'answer',
@@ -118,6 +119,7 @@ REPLY_TYPES = [
 ]
 USER_STATES = [
     None,
+    USER_CREATION_STATE[0],
     USER_CREATION_STATE[1],
     USER_DEFAULT_STATE[0],
     GRAPH_CREATION_STATE[0],
@@ -160,6 +162,7 @@ USER_STATES = [
     None,
 ]
 IF_INLINE_QUERY = [
+    False,
     False,
     False,
     False,
@@ -213,6 +216,7 @@ INLINE_HANDLERS = [
     None,
     None,
     None,
+    None,
     inline_graph_handler,
     view_graph,
     inline_pixel_handler,
@@ -246,6 +250,7 @@ INLINE_HANDLERS = [
     None,
 ]
 CALLBACK_DATAS = [
+    None,
     None,
     None,
     None,
@@ -324,6 +329,7 @@ async def reply_kwarg():
             {},
             {},
             {},
+            {},
             {'reply_markup': type_selection()},
             {'reply_markup': color_selection()},
             {},
@@ -372,19 +378,20 @@ async def test_main_handler():
     patchers = []
     patchers.append(patch('habit_bot.create_db_user', AsyncMock()))
     patchers.append(patch('habit_bot.save_user', AsyncMock()))
+    patchers.append(patch('habit_bot.bot.pin_chat_message', AsyncMock()))
 
-    patchers.append(patch('habit_bot.create_user', Mock(return_value=API_RETURNS[0])))
-    patchers.append(patch('habit_bot.delete_user', Mock(return_value=API_RETURNS[1])))
-    patchers.append(patch('habit_bot.create_graph', Mock(return_value=API_RETURNS[2])))
-    patchers.append(patch('habit_bot.get_graphs', Mock(return_value=API_RETURNS[3])))
-    patchers.append(patch('habit_bot.show_graph', Mock(return_value=API_RETURNS[4])))
-    patchers.append(patch('habit_bot.update_graph', Mock(return_value=API_RETURNS[5])))
-    patchers.append(patch('habit_bot.delete_graph', Mock(return_value=API_RETURNS[6])))
-    patchers.append(patch('habit_bot.get_pixels', Mock(return_value=API_RETURNS[7])))
-    patchers.append(patch('habit_bot.post_pixel', Mock(return_value=API_RETURNS[8])))
-    patchers.append(patch('habit_bot.update_pixel', Mock(return_value=API_RETURNS[9])))
-    patchers.append(patch('habit_bot.delete_pixel', Mock(return_value=API_RETURNS[10])))
-    patchers.append(patch('habit_bot.get_graph', Mock(return_value=API_RETURNS[11])))
+    patchers.append(patch('habit_bot.create_user', AsyncMock(return_value=API_RETURNS[0])))
+    patchers.append(patch('habit_bot.delete_user', AsyncMock(return_value=API_RETURNS[1])))
+    patchers.append(patch('habit_bot.create_graph', AsyncMock(return_value=API_RETURNS[2])))
+    patchers.append(patch('habit_bot.get_graphs', AsyncMock(return_value=API_RETURNS[3])))
+    patchers.append(patch('habit_bot.show_graph', AsyncMock(return_value=API_RETURNS[4])))
+    patchers.append(patch('habit_bot.update_graph', AsyncMock(return_value=API_RETURNS[5])))
+    patchers.append(patch('habit_bot.delete_graph', AsyncMock(return_value=API_RETURNS[6])))
+    patchers.append(patch('habit_bot.get_pixels', AsyncMock(return_value=API_RETURNS[7])))
+    patchers.append(patch('habit_bot.post_pixel', AsyncMock(return_value=API_RETURNS[8])))
+    patchers.append(patch('habit_bot.update_pixel', AsyncMock(return_value=API_RETURNS[9])))
+    patchers.append(patch('habit_bot.delete_pixel', AsyncMock(return_value=API_RETURNS[10])))
+    patchers.append(patch('habit_bot.get_graph', AsyncMock(return_value=API_RETURNS[11])))
 
     for patcher in patchers:
         patcher.start()
