@@ -9,7 +9,6 @@ from typing import List
 from functools import partial
 
 import aiohttp
-from aiohttp import web
 import asyncio
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.utils.executor import start_webhook
@@ -21,7 +20,11 @@ from load_pixel_calendar import *
 from utils import get_user, save_user, User, create_db_user, database
 
 
-TOKEN = os.environ['TELEGRAM_TOKEN']
+HEROKU = os.getenv('HEROKU', False)
+if HEROKU:
+    TOKEN = os.environ['TELEGRAM_TOKEN']
+else:
+    from config import TOKEN
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN
 
 logger = logging.getLogger(__name__)
@@ -31,8 +34,6 @@ logger.addHandler(handler)
 
 bot = Bot(TOKEN)
 dp = Dispatcher(bot)
-
-app = web.Application()
 
 HEROKU_APP_NAME = os.getenv('HEROKU_APP_NAME')
 
@@ -45,8 +46,6 @@ WEBHOOK_URL = f'{WEBHOOK_HOST}{WEBHOOK_PATH}'
 WEBAPP_HOST = '0.0.0.0'
 WEBAPP_PORT = os.getenv('PORT', default=8000)
 
-
-# TODO Add webhooks
 USER_CREATION_STATE = ('new user', 'user creation',)
 USER_DELETION_STATE = ('deletion confirmed',)
 USER_DEFAULT_STATE = ('default',)
@@ -994,14 +993,8 @@ async def on_startup(dispatcher):
     :param dispatcher:
     :return:
     """
-    # loop = asyncio.get_running_loop()
-    # web.run_app(app, loop=loop, host=WEBAPP_HOST, port=WEBAPP_PORT)
-    # runner = aiohttp.web.AppRunner(app)
-    # await runner.setup()
-    # site = aiohttp.web.TCPSite(runner, host=WEBAPP_HOST, port=WEBAPP_PORT)
-    # await site.start()
-    # print('server running')
-    await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
+    if HEROKU:
+        await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
     await bot.set_my_commands(BOT_COMMANDS)
     menu_button = types.MenuButtonCommands()
     await bot.set_chat_menu_button(menu_button=menu_button)
@@ -1018,7 +1011,8 @@ async def on_shutdown(dispatcher):
     for user in USERS.values():
         if user.session:
             await user.session.close()
-    await bot.delete_webhook()
+    if HEROKU:
+        await bot.delete_webhook()
 
 
 if __name__ == '__main__':
@@ -1026,8 +1020,10 @@ if __name__ == '__main__':
                                        cb_calendar.filter(direction='prev'))
     dp.register_callback_query_handler(partial(load_pixel_next, users=USERS),
                                        cb_calendar.filter(direction='next'))
-    # executor.start_polling(dp, skip_updates=True,
-    #                        on_startup=on_startup, on_shutdown=on_shutdown)
-    start_webhook(dispatcher=dp, webhook_path=WEBHOOK_PATH, skip_updates=True,
-                  on_startup=on_startup, on_shutdown=on_shutdown,
-                  host=WEBAPP_HOST, port=WEBAPP_PORT)
+    if not HEROKU:
+        executor.start_polling(dp, skip_updates=True,
+                               on_startup=on_startup, on_shutdown=on_shutdown)
+    else:
+        start_webhook(dispatcher=dp, webhook_path=WEBHOOK_PATH, skip_updates=True,
+                      on_startup=on_startup, on_shutdown=on_shutdown,
+                      host=WEBAPP_HOST, port=WEBAPP_PORT)

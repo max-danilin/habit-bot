@@ -6,13 +6,18 @@ import enum
 import json
 from datetime import datetime
 import re
+import os
 from typing import Tuple, Union, List, Optional, Literal, TypedDict
 import requests
 import aiohttp
 
 PIXELA_BASE_URL = 'https://pixe.la/v1/'
-TOKEN_PIXELA = 'my-md-token'
-NAME_PREFIX = 'md-habit-'
+HEROKU = os.getenv('HEROKU', False)
+if HEROKU:
+    TOKEN_PIXELA = os.getenv('TOKEN_PIXELA')
+    NAME_PREFIX = os.getenv('NAME_PREFIX')
+else:
+    from config import TOKEN_PIXELA, NAME_PREFIX
 
 
 class Pixels(TypedDict):
@@ -58,6 +63,7 @@ async def create_user(session: aiohttp.ClientSession, token: str, name: str) -> 
     :param name: username
     :return: token and name if successful or None
     """
+    print('creating user')
     url = PIXELA_BASE_URL + 'users'
     username = generate_name(name)
     payload = {
@@ -83,6 +89,7 @@ async def delete_user(session: aiohttp.ClientSession, token: str, username: str)
     :param username: username
     :return: token and name if successful or None
     """
+    print('deleting user')
     url = PIXELA_BASE_URL + 'users/' + username
     headers = {'X-USER-TOKEN': token}
     async with session.delete(url, headers=headers) as resp:

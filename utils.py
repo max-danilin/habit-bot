@@ -8,11 +8,12 @@ from typing import Union
 import asyncpg
 import os
 
-# DATABASE_URL = '127.0.0.1'
-# DATABASE_NAME = 'Habit_bot'
-# DATABASE_USER = 'postgres'
-# DATABASE_PASSWORD = ''
-DATABASE_URL = os.environ['DATABASE_URL']
+
+HEROKU = os.getenv('HEROKU', False)
+if HEROKU:
+    DATABASE_URL = os.environ['DATABASE_URL']
+else:
+    from config import DATABASE_USER, DATABASE_PASSWORD, DATABASE_NAME, DATABASE_URL
 
 
 class Database:
@@ -20,18 +21,22 @@ class Database:
     Class to manipulate with connection to database.
     """
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, name: str = '', user: str = '', pwd: str = ''):
         self.url = url
-        # self.name = name
-        # self.user = user
-        # self.pwd = pwd
+        self.name = name
+        self.user = user
+        self.pwd = pwd
         self.conn: asyncpg.connection.Connection = None
 
     async def connect(self):
         """
         Making connection.
         """
-        self.conn = await asyncpg.connect(self.url)
+        if not HEROKU:
+            self.conn = await asyncpg.connect(user=self.user, password=self.pwd,
+                                              database=self.name, host=self.url)
+        else:
+            self.conn = await asyncpg.connect(self.url)
 
     async def close(self):
         """
@@ -40,8 +45,10 @@ class Database:
         await self.conn.close()
 
 
-# database = Database(url=DATABASE_URL, name=DATABASE_NAME, pwd=DATABASE_PASSWORD, user=DATABASE_USER)
-database = Database(DATABASE_URL)
+if not HEROKU:
+    database = Database(url=DATABASE_URL, name=DATABASE_NAME, pwd=DATABASE_PASSWORD, user=DATABASE_USER)
+else:
+    database = Database(DATABASE_URL)
 
 
 class User:
