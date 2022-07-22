@@ -21,7 +21,7 @@ from load_pixel_calendar import *
 from utils import get_user, save_user, User, create_db_user, database
 
 
-TOKEN = '5381219717:AAGmW2vYBGKaqnOpH3ng3iGC_o9Bff4KvsQ'
+TOKEN = os.environ['TELEGRAM_TOKEN']
 BASE_URL = 'https://api.telegram.org/bot' + TOKEN
 
 logger = logging.getLogger(__name__)
@@ -1001,7 +1001,7 @@ async def on_startup(dispatcher):
     # site = aiohttp.web.TCPSite(runner, host=WEBAPP_HOST, port=WEBAPP_PORT)
     # await site.start()
     # print('server running')
-    # await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
+    await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
     await bot.set_my_commands(BOT_COMMANDS)
     menu_button = types.MenuButtonCommands()
     await bot.set_chat_menu_button(menu_button=menu_button)
@@ -1018,7 +1018,7 @@ async def on_shutdown(dispatcher):
     for user in USERS.values():
         if user.session:
             await user.session.close()
-    # await bot.delete_webhook()
+    await bot.delete_webhook()
 
 
 if __name__ == '__main__':
@@ -1026,8 +1026,8 @@ if __name__ == '__main__':
                                        cb_calendar.filter(direction='prev'))
     dp.register_callback_query_handler(partial(load_pixel_next, users=USERS),
                                        cb_calendar.filter(direction='next'))
-    executor.start_polling(dp, skip_updates=True,
-                           on_startup=on_startup, on_shutdown=on_shutdown)
-    # start_webhook(dispatcher=dp, webhook_path=WEBHOOK_PATH, skip_updates=True,
-    #               on_startup=on_startup, on_shutdown=on_shutdown,
-    #               host=WEBAPP_HOST, port=WEBAPP_PORT)
+    # executor.start_polling(dp, skip_updates=True,
+    #                        on_startup=on_startup, on_shutdown=on_shutdown)
+    start_webhook(dispatcher=dp, webhook_path=WEBHOOK_PATH, skip_updates=True,
+                  on_startup=on_startup, on_shutdown=on_shutdown,
+                  host=WEBAPP_HOST, port=WEBAPP_PORT)

@@ -6,11 +6,13 @@ import json
 from datetime import datetime, date
 from typing import Union
 import asyncpg
+import os
 
-DATABASE_URL = '127.0.0.1'
-DATABASE_NAME = 'Habit_bot'
-DATABASE_USER = 'postgres'
-DATABASE_PASSWORD = '921404'
+# DATABASE_URL = '127.0.0.1'
+# DATABASE_NAME = 'Habit_bot'
+# DATABASE_USER = 'postgres'
+# DATABASE_PASSWORD = ''
+DATABASE_URL = os.environ['DATABASE_URL']
 
 
 class Database:
@@ -18,19 +20,18 @@ class Database:
     Class to manipulate with connection to database.
     """
 
-    def __init__(self, url: str, name: str, user: str, pwd: str):
+    def __init__(self, url: str):
         self.url = url
-        self.name = name
-        self.user = user
-        self.pwd = pwd
+        # self.name = name
+        # self.user = user
+        # self.pwd = pwd
         self.conn: asyncpg.connection.Connection = None
 
     async def connect(self):
         """
         Making connection.
         """
-        self.conn = await asyncpg.connect(user=self.user, password=self.pwd,
-                                          database=self.name, host=self.url)
+        self.conn = await asyncpg.connect(self.url)
 
     async def close(self):
         """
@@ -39,7 +40,8 @@ class Database:
         await self.conn.close()
 
 
-database = Database(url=DATABASE_URL, name=DATABASE_NAME, pwd=DATABASE_PASSWORD, user=DATABASE_USER)
+# database = Database(url=DATABASE_URL, name=DATABASE_NAME, pwd=DATABASE_PASSWORD, user=DATABASE_USER)
+database = Database(DATABASE_URL)
 
 
 class User:
@@ -111,9 +113,6 @@ async def get_user(id: int, container: dict) -> User:
     :return: user object
     """
     if not container.keys():
-        # conn = await asyncpg.connect(user=DATABASE_USER, password=DATABASE_PASSWORD,
-        #                              database=DATABASE_NAME, host=DATABASE_URL)
-        # users = await conn.fetch('SELECT * FROM users')
         users = await database.conn.fetch('SELECT * FROM users')
         for item in users:
             user = User(
@@ -135,7 +134,6 @@ async def get_user(id: int, container: dict) -> User:
                 else None
             user.editting = item['editting']
             container.update({user.id: user})
-        # await conn.close()
     return container.get(id)
 
 
@@ -152,12 +150,6 @@ async def save_user(user: User):
     ($1, $2, $3, $4, $5, $6, $7)
     WHERE telegram_id = $8 AND username = $9;
     '''
-    # conn = await asyncpg.connect(user=DATABASE_USER, password=DATABASE_PASSWORD,
-    #                              database=DATABASE_NAME, host=DATABASE_URL)
-    # await conn.execute(query, user.pixela_token, user.pixela_name, user.state,
-    #                    json.dumps(user.graph), json.dumps(user.pixel), json.dumps(user.pixels),
-    #                    user.editting, user.id, user.first_name)
-    # await conn.close()
     await database.conn.execute(query, user.pixela_token, user.pixela_name, user.state,
                                 json.dumps(user.graph), json.dumps(user.pixel),
                                 json.dumps(user.pixels), user.editting, user.id, user.first_name)
@@ -172,10 +164,6 @@ async def create_db_user(user: User):
     query = '''
     INSERT INTO users (telegram_id, username, user_state, editting) VALUES ($1, $2, $3, $4);
     '''
-    # conn = await asyncpg.connect(user=DATABASE_USER, password=DATABASE_PASSWORD,
-    #                              database=DATABASE_NAME, host=DATABASE_URL)
-    # await conn.execute(query, user.id, user.first_name, user.state, False)
-    # await conn.close()
     await database.conn.execute(query, user.id, user.first_name, user.state, False)
 
 

@@ -1,2 +1,6 @@
 venv
 .idea
+settings.txt
+sql_create
+pylintrc
+venv1
