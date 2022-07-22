@@ -225,6 +225,9 @@ async def command_handler(message: types.Message):
     logger.info('User details: %s', user)
     if not user:
         await ask_to_create_user(message)
+    elif not user.session:
+        user.session = aiohttp.ClientSession()
+        await message.answer('Возобновляем сессию, попробуйте еще раз...')
     elif message.text == '/start':
         if user.pixela_name:
             await message.answer(f'Здравствуйте, {user.first_name}! '
@@ -263,6 +266,9 @@ async def main_handler(message: types.Message):
     logger.info('User details: %s', user)
     if not user:
         await ask_to_create_user(message)
+    elif not user.session:
+        user.session = aiohttp.ClientSession()
+        await message.answer('Возобновляем сессию, попробуйте еще раз...')
     elif user.state == USER_CREATION_STATE[0]:
         await user_creation_agreement(message, user)
     elif user.state == USER_CREATION_STATE[1]:

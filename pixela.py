@@ -63,7 +63,6 @@ async def create_user(session: aiohttp.ClientSession, token: str, name: str) -> 
     :param name: username
     :return: token and name if successful or None
     """
-    print('creating user')
     url = PIXELA_BASE_URL + 'users'
     username = generate_name(name)
     payload = {
@@ -89,7 +88,6 @@ async def delete_user(session: aiohttp.ClientSession, token: str, username: str)
     :param username: username
     :return: token and name if successful or None
     """
-    print('deleting user')
     url = PIXELA_BASE_URL + 'users/' + username
     headers = {'X-USER-TOKEN': token}
     async with session.delete(url, headers=headers) as resp:
